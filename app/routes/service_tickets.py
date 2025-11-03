@@ -1,68 +1,41 @@
-# app/routes/service_tickets.py
-from flask import Blueprint, request, jsonify, abort
-from app.extensions import db
-from app.models import ServiceTicket, Customer, Mechanic, Inventory
-from app.routes.auth import token_required
+﻿from flask import Blueprint, jsonify, request
+from ..extensions import db
+from ..models import ServiceTicket
+from ..schemas import ticket_schema, tickets_schema
 
-service_tickets_bp = Blueprint("service_tickets", __name__)
+bp = Blueprint('service_tickets', __name__)
 
-
-@service_tickets_bp.get("/")
+@bp.get('/')
 def list_tickets():
-    tickets = ServiceTicket.query.all()
-    return jsonify([t.to_dict() for t in tickets])
+    rows = db.session.query(ServiceTicket).order_by(ServiceTicket.id.asc()).all()
+    return jsonify({"value": tickets_schema.dump(rows), "Count": len(rows)})
 
-
-@service_tickets_bp.post("/")
+@bp.post('/')
 def create_ticket():
     data = request.get_json(silent=True) or {}
-    description = data.get("description")
-    customer_id = data.get("customer_id")
-
-    if not description or not customer_id:
-        abort(400, "description and customer_id required")
-
-    if not Customer.query.get(customer_id):
-        abort(404, "customer not found")
-
-    ticket = ServiceTicket(description=description, customer_id=customer_id)
-    db.session.add(ticket)
+    cid = data.get('customer_id')
+    vehicle = data.get('vehicle')
+    issue = data.get('issue')
+    status = data.get('status', 'open')
+    if not (cid and vehicle and issue):
+        return {"error": "customer_id, vehicle, issue required"}, 400
+    t = ServiceTicket(customer_id=cid, vehicle=vehicle, issue=issue, status=status)
+    db.session.add(t)
     db.session.commit()
-    return jsonify(ticket.to_dict()), 201
+    return ticket_schema.jsonify(t), 201
 
+@bp.get('/my-tickets')
+def my_tickets():
+    # Stub: in a real app, derive user from JWT sub
+    rows = db.session.query(ServiceTicket).filter_by(customer_id=1).all()
+    return jsonify({"value": tickets_schema.dump(rows), "Count": len(rows)})
 
-@service_tickets_bp.get("/my-tickets")
-@token_required
-def my_tickets(customer_id):
-    tickets = ServiceTicket.query.filter_by(customer_id=customer_id).all()
-    return jsonify([t.to_dict() for t in tickets])
-
-
-@service_tickets_bp.put("/<int:ticket_id>/edit")
-def edit_ticket(ticket_id):
-    ticket = ServiceTicket.query.get_or_404(ticket_id)
+@bp.put('/<int:ticket_id>/edit')
+def edit_ticket(ticket_id: int):
+    t = db.session.get(ServiceTicket, ticket_id)
+    if not t:
+        return {"error": "not found"}, 404
     data = request.get_json(silent=True) or {}
-
-    # add mechanics
-    add_ids = data.get("add_ids", [])
-    for mid in add_ids:
-        mech = Mechanic.query.get(mid)
-        if mech and mech not in ticket.mechanics:
-            ticket.mechanics.append(mech)
-
-    # remove mechanics
-    remove_ids = data.get("remove_ids", [])
-    for mid in remove_ids:
-        mech = Mechanic.query.get(mid)
-        if mech and mech in ticket.mechanics:
-            ticket.mechanics.remove(mech)
-
-    # add a part (single)
-    part_id = data.get("part_id")
-    if part_id:
-        part = Inventory.query.get(part_id)
-        if part and part not in ticket.parts:
-            ticket.parts.append(part)
-
+    t.status = data.get('status', t.status)
     db.session.commit()
-    return jsonify(ticket.to_dict())
+    return ticket_schema.jsonify(t)

@@ -1,51 +1,29 @@
-# app/routes/mechanics.py
-from flask import Blueprint, request, jsonify, abort
-from app.extensions import db
-from app.models import Mechanic, ServiceTicket
+﻿from flask import Blueprint, jsonify, request
+from ..extensions import db
+from ..models import Mechanic
+from ..schemas import mechanic_schema, mechanics_schema
 
-mechanics_bp = Blueprint("mechanics", __name__)
+bp = Blueprint('mechanics', __name__)
 
-
-@mechanics_bp.get("/")
+@bp.get('/')
 def list_mechanics():
-    mechs = Mechanic.query.all()
-    return jsonify([m.to_dict() for m in mechs])
+    rows = db.session.query(Mechanic).order_by(Mechanic.id.asc()).all()
+    return jsonify({"value": mechanics_schema.dump(rows), "Count": len(rows)})
 
+@bp.get('/top')
+def top_mechanics():
+    rows = db.session.query(Mechanic).order_by(Mechanic.rating.desc()).limit(5).all()
+    return jsonify({"value": mechanics_schema.dump(rows), "Count": len(rows)})
 
-@mechanics_bp.post("/")
+@bp.post('/')
 def create_mechanic():
     data = request.get_json(silent=True) or {}
-    name = data.get("name")
-    specialization = data.get("specialization")
-
+    name = data.get('name')
+    specialty = data.get('specialty')
+    rating = float(data.get('rating', 0))
     if not name:
-        abort(400, "name is required")
-
-    mech = Mechanic(name=name, specialization=specialization)
-    db.session.add(mech)
+        return {"error": "name required"}, 400
+    m = Mechanic(name=name, specialty=specialty, rating=rating)
+    db.session.add(m)
     db.session.commit()
-    return jsonify(mech.to_dict()), 201
-
-
-@mechanics_bp.get("/top")
-def top_mechanics():
-    # mechanics ordered by number of service tickets
-    # relies on service_mechanic table
-    results = (
-        db.session.query(Mechanic, db.func.count(ServiceTicket.id).label("tickets"))
-        .join(Mechanic.service_tickets)
-        .group_by(Mechanic.id)
-        .order_by(db.desc("tickets"))
-        .all()
-    )
-    return jsonify(
-        [
-            {
-                "id": mech.id,
-                "name": mech.name,
-                "specialization": mech.specialization,
-                "tickets": tickets,
-            }
-            for mech, tickets in results
-        ]
-    )
+    return mechanic_schema.jsonify(m), 201

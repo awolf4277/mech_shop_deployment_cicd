@@ -1,26 +1,30 @@
-from flask import Blueprint, request, jsonify, abort
-from app.extensions import db
-from app.models import Customer
+﻿from flask import Blueprint, jsonify, request
+from ..extensions import db, limiter
+from ..models import Customer
+from ..schemas import customer_schema, customers_schema
 
-customers_bp = Blueprint("customers", __name__)
+bp = Blueprint('customers', __name__)
 
-
-@customers_bp.get("/")
+@bp.get('/')
+@limiter.limit("30/minute")
 def list_customers():
-    customers = Customer.query.all()
-    return jsonify([c.to_dict() for c in customers])
+    rows = db.session.query(Customer).order_by(Customer.id.asc()).all()
+    return jsonify({"value": customers_schema.dump(rows), "Count": len(rows)})
 
-
-@customers_bp.post("/")
+@bp.post('/')
 def create_customer():
     data = request.get_json(silent=True) or {}
-    name = data.get("name")
-    email = data.get("email")
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
     if not name or not email:
-        abort(400, "name and email required")
-    if Customer.query.filter_by(email=email).first():
-        abort(400, "email already exists")
+        return {"error": "name and email required"}, 400
+    if db.session.query(Customer).filter_by(email=email).first():
+        return {"error": "email already exists"}, 409
+
     c = Customer(name=name, email=email)
+    if password:
+        c.set_password(password)
     db.session.add(c)
     db.session.commit()
-    return jsonify(c.to_dict()), 201
+    return customer_schema.jsonify(c), 201
