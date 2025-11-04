@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Set environment variables
+      - name: Set env for tests
         run: |
           echo "FLASK_APP=app" >> $env:GITHUB_ENV
           echo "FLASK_ENV=testing" >> $env:GITHUB_ENV
@@ -40,8 +40,30 @@ jobs:
           echo "CACHE_TYPE=SimpleCache" >> $env:GITHUB_ENV
           echo "RATE_LIMIT_DEFAULT=100/hour" >> $env:GITHUB_ENV
 
-      - name: Run tests
+      - name: Sanity check & probe import
+        shell: pwsh
         run: |
-          set PYTHONPATH=.
+          Write-Host "Repo root:" (Get-Location)
+          Get-ChildItem -Recurse -Depth 2 | Select-Object FullName
+          $env:PYTHONPATH="."
+          python - << 'PY'
+          import sys, json
+          print("Python:", sys.version)
+          print("PYTHONPATH:", [p for p in sys.path if p])
+          try:
+              from app import app as flask_app
+              print("Import OK: from app import app")
+              r = flask_app.test_client().get("/health")
+              print("Health status:", r.status_code, "json:", r.json)
+              assert r.status_code == 200 and r.json.get("ok") is True
+          except Exception as e:
+              print("Probe FAILED:", repr(e))
+              raise
+          PY
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH="."
           pytest -vv --maxfail=1
 

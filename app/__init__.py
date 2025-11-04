@@ -168,3 +168,10 @@ def create_app() -> Flask:
 
     return app
 
+
+# Ensure module-level app is exposed for tests/WSGI
+try:
+    app = create_app()
+except NameError:
+    pass
+
