@@ -9,6 +9,14 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    env:
+      # Make the repo root importable everywhere in the job
+      PYTHONPATH: .
+      FLASK_APP: app
+      FLASK_ENV: testing
+      DATABASE_URL: sqlite:///ci.db
+      CACHE_TYPE: SimpleCache
+      RATE_LIMIT_DEFAULT: 100/hour
 
     steps:
       - name: Checkout
@@ -23,38 +31,34 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          # Bump the suffix to bust stale caches if needed
+          key: ${{ runner.os }}-pip-v2-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-pip-v2-
 
       - name: Install dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Set env for tests
-        run: |
-          echo "FLASK_APP=app" >> $env:GITHUB_ENV
-          echo "FLASK_ENV=testing" >> $env:GITHUB_ENV
-          echo "DATABASE_URL=sqlite:///ci.db" >> $env:GITHUB_ENV
-          echo "CACHE_TYPE=SimpleCache" >> $env:GITHUB_ENV
-          echo "RATE_LIMIT_DEFAULT=100/hour" >> $env:GITHUB_ENV
-
-      - name: Sanity check & probe import
+      - name: Sanity check tree & import app
         shell: pwsh
         run: |
-          Write-Host "Repo root:" (Get-Location)
-          Get-ChildItem -Recurse -Depth 2 | Select-Object FullName
-          $env:PYTHONPATH="."
+          Write-Host "PWD:" (Get-Location)
+          if (-not (Test-Path "app/__init__.py")) {
+            Write-Error "Missing app/__init__.py"
+            exit 1
+          }
           python - << 'PY'
-          import sys, json
+          import sys
           print("Python:", sys.version)
-          print("PYTHONPATH:", [p for p in sys.path if p])
+          print("sys.path[0..3]:", sys.path[:4])
           try:
               from app import app as flask_app
               print("Import OK: from app import app")
               r = flask_app.test_client().get("/health")
-              print("Health status:", r.status_code, "json:", r.json)
+              print("Health:", r.status_code, r.json)
               assert r.status_code == 200 and r.json.get("ok") is True
           except Exception as e:
               print("Probe FAILED:", repr(e))
@@ -64,6 +68,6 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
-          $env:PYTHONPATH="."
           pytest -vv --maxfail=1
+
 
