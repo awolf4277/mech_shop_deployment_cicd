@@ -1,0 +1,21 @@
+﻿
+{
+  "info": { "name": "Mechanic Shop API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "item": [
+    { "name": "Health", "request": { "method": "GET", "url": "{{base}}/health" } },
+    { "name": "List Customers", "request": { "method": "GET", "url": "{{base}}/customers/" } },
+    { "name": "List Mechanics", "request": { "method": "GET", "url": "{{base}}/mechanics/" } },
+    { "name": "Top Mechanics", "request": { "method": "GET", "url": "{{base}}/mechanics/top" } },
+    { "name": "List Inventory", "request": { "method": "GET", "url": "{{base}}/inventory/" } },
+    { "name": "List Tickets", "request": { "method": "GET", "url": "{{base}}/service-tickets/" } },
+    { "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}" },
+        "url": "{{base}}/auth/login"
+      }
+    }
+  ],
+  "variable": [{ "key": "base", "value": "http://127.0.0.1:5000" }]
+}

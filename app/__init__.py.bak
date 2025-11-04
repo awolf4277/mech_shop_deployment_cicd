@@ -95,7 +95,7 @@ def _init_extensions(app: Flask) -> None:
     if app.config.get("RATELIMIT_ENABLED", True):
         storage_uri = app.config.get("RATELIMIT_STORAGE_URI") or None
         # If you set RATELIMIT_STORAGE_URI=redis://..., extensions.limiter should be created with that
-        limiter.init_app(app)
+        limiter.init_app(app, storage_uri=storage_uri)
     else:
         # Still init so decorators work; disable globally
         limiter.enabled = False
