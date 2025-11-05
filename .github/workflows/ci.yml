@@ -10,7 +10,6 @@ jobs:
   test:
     runs-on: windows-latest
     env:
-      # Make the repo root importable everywhere in the job
       PYTHONPATH: .
       FLASK_APP: app
       FLASK_ENV: testing
@@ -31,10 +30,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          # Bump the suffix to bust stale caches if needed
-          key: ${{ runner.os }}-pip-v2-${{ hashFiles('requirements.txt') }}
+          key: ${{ runner.os }}-pip-v3-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-v2-
+            ${{ runner.os }}-pip-v3-
 
       - name: Install dependencies
         shell: pwsh
@@ -42,32 +40,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Sanity check tree & import app
+      - name: Show file tree & __init__.py head
         shell: pwsh
         run: |
           Write-Host "PWD:" (Get-Location)
-          if (-not (Test-Path "app/__init__.py")) {
+          Get-ChildItem -Recurse -Depth 2 | Select-Object FullName
+          Write-Host "`n--- app/__init__.py (first 40 lines) ---"
+          if (Test-Path app/__init__.py) {
+            Get-Content app/__init__.py -Head 40
+          } else {
             Write-Error "Missing app/__init__.py"
             exit 1
           }
+
+      - name: Probe import and /health
+        shell: pwsh
+        run: |
           python - << 'PY'
           import sys
           print("Python:", sys.version)
-          print("sys.path[0..3]:", sys.path[:4])
+          print("sys.path[:4]:", sys.path[:4])
           try:
               from app import app as flask_app
               print("Import OK: from app import app")
               r = flask_app.test_client().get("/health")
-              print("Health:", r.status_code, r.json)
+              print("Health probe:", r.status_code, r.json)
               assert r.status_code == 200 and r.json.get("ok") is True
           except Exception as e:
               print("Probe FAILED:", repr(e))
               raise
           PY
 
-      - name: Run tests
+      - name: Run pytest
         shell: pwsh
         run: |
           pytest -vv --maxfail=1
+
 
 
