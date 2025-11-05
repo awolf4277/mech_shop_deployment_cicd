@@ -56,7 +56,7 @@ jobs:
       - name: Probe import and /health
         shell: pwsh
         run: |
-          python - << 'PY'
+          $py = @'
           import sys
           print("Python:", sys.version)
           print("sys.path[:4]:", sys.path[:4])
@@ -69,7 +69,8 @@ jobs:
           except Exception as e:
               print("Probe FAILED:", repr(e))
               raise
-          PY
+          '@
+          $py | python -
 
       - name: Run pytest
         shell: pwsh
