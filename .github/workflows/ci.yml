@@ -76,5 +76,3 @@ jobs:
         shell: pwsh
         run: |
           pytest -vv --maxfail=1
-
-          
