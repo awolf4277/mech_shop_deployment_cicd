@@ -1,10 +1,8 @@
-﻿@'
 from flask import Flask, jsonify
 import os
 
 def create_app():
     app = Flask(__name__)
-    # keep CI/dev simple: use env if present, else sqlite
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///dev.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -21,7 +19,5 @@ def create_app():
 
     return app
 
-# expose module-level app so "from app import app" works in tests/WSGI
+# expose module-level app so tests/WSGI can rom app import app
 app = create_app()
-'@ | Set-Content -Path .\app\__init__.py -Encoding UTF8
-
