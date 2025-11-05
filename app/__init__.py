@@ -19,5 +19,5 @@ def create_app():
 
     return app
 
-# expose module-level app so tests/WSGI can rom app import app
+# Expose module-level app so tests/WSGI can rom app import app
 app = create_app()
