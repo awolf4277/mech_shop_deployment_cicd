@@ -21,3 +21,4 @@ def create_app():
 
 # Expose module-level app so tests/WSGI can rom app import app
 app = create_app()
+app = create_app()
