@@ -59,7 +59,7 @@ jobs:
           $py = @'
           import sys
           print("Python:", sys.version)
-          print("sys.path[:4]:", sys.path[:4])
+          print("sys.path[:6]:", sys.path[:6])
           try:
               from app import app as flask_app
               print("Import OK: from app import app")
@@ -77,3 +77,4 @@ jobs:
         run: |
           pytest -vv --maxfail=1
 
+          
