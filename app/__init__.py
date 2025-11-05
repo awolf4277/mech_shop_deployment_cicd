@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+﻿from flask import Flask, jsonify
 import os
 
 def create_app():
@@ -19,6 +19,7 @@ def create_app():
 
     return app
 
-# Expose module-level app so tests/WSGI can rom app import app
+# Expose module-level app so tests/WSGI can `from app import app`
 app = create_app()
-app = create_app()
+"@
+[System.IO.File]::WriteAllText("$PWD\app\__init__.py", $py, [System.Text.UTF8Encoding]::new($false))
